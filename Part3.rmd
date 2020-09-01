@@ -1,0 +1,115 @@
+---
+title: "HW3-Part3"
+author: "Azat Dovgeldiyev"
+date: "8/14/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+#Libraries
+```{r}
+library(foreign)
+library(CCA)
+library(yacca)
+library(MASS)
+```
+
+```{r}
+ccaWilks = function(set1, set2, cca)
+{
+  ev = ((1 - cca$cor^2))
+  ev
+  
+  n = dim(set1)[1]
+  p = length(set1)
+  q = length(set2)
+  k = min(p, q)
+  m = n - 3/2 - (p + q)/2
+  m
+  
+  w = rev(cumprod(rev(ev)))
+  
+  # initialize
+  d1 = d2 = f = vector("numeric", k)
+  
+  for (i in 1:k) 
+  {
+    s = sqrt((p^2 * q^2 - 4)/(p^2 + q^2 - 5))
+    si = 1/s
+    d1[i] = p * q
+    d2[i] = m * s - p * q/2 + 1
+    r = (1 - w[i]^si)/w[i]^si
+    f[i] = r * d2[i]/d1[i]
+    p = p - 1
+    q = q - 1
+  }
+  
+  pv = pf(f, d1, d2, lower.tail = FALSE)
+  dmat = cbind(WilksL = w, F = f, df1 = d1, df2 = d2, p = pv)
+}
+```
+#Read in Datasets
+```{r}
+responses <- read.csv(file="responses.csv", header=TRUE, sep=",")
+dim(responses)#1,010-Sample Size and 150 variables
+head(responses)
+```
+
+```{r}
+sum(is.na(responses))
+#571 total missing values (571 cells with missing data)
+```
+
+```{r}
+#Listwise Deletion
+responses2 <- na.omit(responses)
+
+#Check new data has no missing data
+sum(is.na(responses2))
+```
+
+```{r}
+music <- responses2[,1:19]
+hobbies_interests <- responses2[,32:63]
+```
+
+# This gives us the cannonical correlates, but no significance tests
+```{r}
+c = cancor(music, hobbies_interests)
+c
+```
+
+#Wilk's Lambda Test
+```{r}
+cc_mm = cc(music, hobbies_interests)
+wilks_mm = ccaWilks(music, hobbies_interests, cc_mm)
+round(wilks_mm, 2)
+```
+```{r}
+library(yacca)
+c2 = cca(hobbies_interests,music)
+c2
+```
+```{r}
+#CV1
+helio.plot(c2, cv=1, x.name="Hobbies Values", 
+           y.name="Music Values")
+
+```
+
+```{r}
+c2$chisq
+c2$df
+summary(c2)
+round(pchisq(c2$chisq, c2$df, lower.tail=F), 3)
+```
+
+
+
+
